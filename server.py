@@ -2,18 +2,35 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.request, urllib.error, json, os
 
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
+PORT = int(os.environ.get("PORT", 8000))
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *a): pass  # silencia logs verbose
+
+    def log_message(self, *a): pass
+
+    def _cors(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
     def do_OPTIONS(self):
+        self.send_response(200)
         self._cors()
         self.end_headers()
 
+    def do_GET(self):
+        self.send_response(200)
+        self._cors()
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"RespirIA backend ativo!")
+
     def do_POST(self):
         if self.path != "/api/chat":
-            self.send_response(404); self.end_headers(); return
+            self.send_response(404)
+            self._cors()
+            self.end_headers()
+            return
 
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
@@ -30,13 +47,14 @@ class Handler(BaseHTTPRequestHandler):
         )
 
         try:
-            with urllib.request.urlopen(req) as r:
+            with urllib.request.urlopen(req, timeout=60) as r:
                 data = r.read()
-                self.send_response(200)
-                self._cors()
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(data)
+            self.send_response(200)
+            self._cors()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(data)
+
         except urllib.error.HTTPError as e:
             err = e.read()
             self.send_response(e.code)
@@ -45,12 +63,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(err)
 
-    def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", FRONTEND_URL)
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        except Exception as e:
+            msg = json.dumps({"error": {"message": str(e)}}).encode()
+            self.send_response(500)
+            self._cors()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(msg)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    print(f"RespirIA backend rodando na porta {port}")
-    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    print(f"RespirIA backend rodando na porta {PORT}", flush=True)
+    HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
