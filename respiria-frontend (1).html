@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RespirIA — Tutor de Ventilação Mecânica</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --t50:#E1F5EE;--t100:#9FE1CB;--t200:#5DCAA5;--t400:#1D9E75;--t600:#0F6E56;--t800:#085041;--t900:#04342C;
+  --c50:#FAECE7;--c200:#F0997B;--c400:#D85A30;--c600:#993C1D;
+  --a50:#FAEEDA;--a200:#EF9F27;--a400:#BA7517;--a600:#854F0B;
+  --b50:#E6F1FB;--b400:#378ADD;--b600:#185FA5;
+  --g50:#F1EFE8;--g100:#D3D1C7;--g200:#B4B2A9;--g400:#888780;--g600:#5F5E5A;--g800:#444441;--g900:#2C2C2A;
+  --bg:#F5F3EE;--sur:#FFF;--bdr:#E4E2DA;--txt:#1A1917;--mut:#6B6963;--hnt:#9E9C96;
+  --fd:'DM Serif Display',Georgia,serif;--fb:'Instrument Sans',sans-serif;--fm:'DM Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--fb);background:var(--bg);color:var(--txt);display:flex;flex-direction:column;height:100vh;}
+
+/* HEADER */
+header{background:var(--t900);height:52px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.07);}
+.logo{display:flex;align-items:center;gap:8px;}
+.logo-mark{width:28px;height:28px;background:var(--t400);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:16px;height:16px;}
+.logo-name{font-family:var(--fd);font-size:18px;color:#fff;letter-spacing:-.01em;}
+.logo-name em{color:var(--t200);font-style:normal;}
+.hdr-r{display:flex;align-items:center;gap:8px;}
+.hdr-badge{font-size:10px;font-family:var(--fm);color:var(--t100);background:rgba(29,158,117,.18);border:1px solid rgba(29,158,117,.3);padding:2px 8px;border-radius:20px;letter-spacing:.05em;}
+.hdr-st{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t100);}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--t400);animation:pulse 2s infinite;}
+.sdot.off{background:var(--c400);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hdr-btn{font-size:11px;padding:3px 9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;cursor:pointer;color:rgba(255,255,255,.7);font-family:var(--fb);}
+.hdr-btn:hover{background:rgba(255,255,255,.14);}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;overflow:hidden;}
+
+/* LEFT SIDEBAR */
+.sb{width:248px;background:var(--sur);border-right:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sb-s{padding:12px;border-bottom:1px solid var(--bdr);}
+.sb-l{font-size:9px;font-family:var(--fm);color:var(--hnt);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;}
+.mb{width:100%;display:flex;align-items:flex-start;gap:7px;padding:8px 9px;background:transparent;border:1px solid var(--bdr);border-radius:7px;cursor:pointer;margin-bottom:4px;text-align:left;transition:all .15s;}
+.mb:hover{background:var(--t50);border-color:var(--t100);}
+.mb.on{background:var(--t50);border-color:var(--t400);}
+.mk{width:18px;height:18px;border-radius:4px;background:var(--g100);color:var(--g600);font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-family:var(--fm);}
+.mb.on .mk{background:var(--t400);color:#fff;}
+.mt{font-size:12px;font-weight:500;color:var(--txt);line-height:1.3;}
+.ms{font-size:10.5px;color:var(--mut);margin-top:1px;line-height:1.4;}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px;}
+.stat-card{background:var(--g50);border-radius:6px;padding:7px 9px;}
+.stat-val{font-family:var(--fm);font-size:15px;font-weight:500;color:var(--txt);}
+.stat-val.ok{color:var(--t600);}
+.stat-val.al{color:var(--c400);}
+.stat-lbl{font-size:9.5px;color:var(--hnt);margin-top:1px;}
+.topic-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bdr);font-size:11px;}
+.topic-item:last-child{border:none;}
+.topic-name{color:var(--mut);}
+.topic-score.ok{color:var(--t400);font-family:var(--fm);font-size:10.5px;}
+.topic-score.al{color:var(--c400);font-family:var(--fm);font-size:10.5px;}
+.topic-score.wn{color:var(--a400);font-family:var(--fm);font-size:10.5px;}
+.no-p{font-size:11px;color:var(--hnt);padding:5px 0;line-height:1.5;}
+
+/* PARAMS */
+.pr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bdr);}
+.pr:last-child{border:none;}
+.pn{font-size:11px;color:var(--mut);}
+.pv{font-family:var(--fm);font-size:12px;font-weight:500;color:var(--txt);}
+.pv.al{color:var(--c400);}
+.pv.ok{color:var(--t400);}
+
+/* PROGRESS */
+.pg-w{padding:12px;}
+.pg-bg{height:3px;background:var(--g100);border-radius:3px;overflow:hidden;margin:5px 0;}
+.pg-f{height:100%;background:var(--t400);border-radius:3px;transition:width .5s ease;}
+.pg-s{font-size:10px;color:var(--hnt);}
+
+/* CENTER CHAT */
+.chat{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.tbar{background:var(--sur);border-bottom:1px solid var(--bdr);padding:9px 18px;display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.tag{font-size:10px;font-family:var(--fm);padding:2px 8px;border-radius:20px;border:1px solid var(--bdr);color:var(--hnt);}
+.tag.on{background:var(--t50);color:var(--t600);border-color:var(--t100);}
+.ttxt{font-size:12px;color:var(--mut);}
+.msgs{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.msgs::-webkit-scrollbar{width:3px;}
+.msgs::-webkit-scrollbar-thumb{background:var(--g100);border-radius:3px;}
+.mw{display:flex;gap:9px;max-width:780px;}
+.mw.ai{align-self:flex-start;}
+.mw.us{flex-direction:row-reverse;align-self:flex-end;}
+.av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;margin-top:3px;}
+.av.ai{background:var(--t400);color:#fff;font-family:var(--fd);font-size:12px;}
+.av.us{background:var(--g50);color:var(--g600);border:1px solid var(--bdr);}
+.bub{padding:11px 14px;font-size:13px;line-height:1.75;color:var(--txt);}
+.mw.ai .bub{background:var(--sur);border:1px solid var(--bdr);border-radius:3px 11px 11px 11px;}
+.mw.us .bub{background:var(--t900);color:#fff;border-radius:11px 3px 11px 11px;}
+.bub b{font-weight:600;}
+.callout{background:var(--t50);border-left:3px solid var(--t400);padding:8px 11px;border-radius:0 5px 5px 0;margin:7px 0;font-size:12.5px;color:var(--t800);line-height:1.6;}
+.callout.wn{background:var(--a50);border-color:var(--a200);color:var(--a600);}
+.callout.al{background:var(--c50);border-color:var(--c200);color:var(--c600);}
+.ch-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;}
+.ch{padding:4px 12px;background:var(--sur);border:1px solid var(--t400);border-radius:20px;color:var(--t600);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fb);transition:all .15s;}
+.ch:hover{background:var(--t50);}
+.dots span{display:inline-block;width:5px;height:5px;background:var(--t400);border-radius:50%;margin:0 2px;animation:blink 1.2s infinite;}
+.dots span:nth-child(2){animation-delay:.2s;}
+.dots span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.2;transform:scale(.8);}40%{opacity:1;transform:scale(1);}}
+
+/* INPUT */
+.inp-area{background:var(--sur);border-top:1px solid var(--bdr);padding:10px 18px;flex-shrink:0;}
+.inp-wrap{display:flex;align-items:flex-end;gap:7px;background:var(--bg);border:1px solid var(--bdr);border-radius:9px;padding:7px 11px;transition:border-color .15s;}
+.inp-wrap:focus-within{border-color:var(--t400);}
+textarea{flex:1;background:transparent;border:none;outline:none;font-family:var(--fb);font-size:13px;color:var(--txt);resize:none;max-height:90px;min-height:20px;line-height:1.5;}
+textarea::placeholder{color:var(--hnt);}
+.snd{width:32px;height:32px;background:var(--t400);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
+.snd:hover{background:var(--t600);}
+.snd:disabled{background:var(--g100);cursor:not-allowed;}
+.snd svg{width:14px;height:14px;}
+.qr{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.qb{font-size:10.5px;padding:3px 9px;background:var(--sur);border:1px solid var(--bdr);border-radius:20px;cursor:pointer;color:var(--mut);font-family:var(--fb);transition:all .15s;}
+.qb:hover{border-color:var(--t400);color:var(--t600);}
+
+/* RIGHT PANEL — CURVAS */
+.rpanel{width:320px;background:var(--sur);border-left:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.rp-tabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0;}
+.rp-tab{flex:1;padding:9px 0;font-size:11px;font-weight:500;text-align:center;cursor:pointer;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;}
+.rp-tab.on{color:var(--t600);border-color:var(--t400);}
+.rp-body{flex:1;overflow-y:auto;padding:12px;}
+.rp-body::-webkit-scrollbar{width:3px;}
+.rp-body::-webkit-scrollbar-thumb{background:var(--g100);border-radius:3px;}
+
+/* CURVAS */
+.curve-mode-row{display:flex;gap:4px;margin-bottom:9px;flex-wrap:wrap;}
+.cm-btn{font-size:10px;padding:3px 9px;border:1px solid var(--bdr);border-radius:20px;cursor:pointer;background:transparent;color:var(--mut);font-family:var(--fb);}
+.cm-btn.on{background:var(--t50);color:var(--t600);border-color:var(--t400);}
+.preset-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:9px;}
+.pr-btn{font-size:10px;padding:3px 8px;border:1px solid var(--bdr);border-radius:20px;cursor:pointer;background:var(--bg);color:var(--mut);font-family:var(--fb);}
+.pr-btn:hover{border-color:var(--t400);color:var(--t600);}
+.cctrl{background:var(--g50);border-radius:6px;padding:8px 10px;margin-bottom:5px;}
+.cctrl-lbl{font-size:10px;color:var(--mut);margin-bottom:3px;display:flex;justify-content:space-between;}
+.cctrl-val{font-size:12px;font-weight:500;color:var(--txt);font-family:var(--fm);}
+.cctrl-val.al{color:var(--c400);}
+input[type=range]{width:100%;margin-top:3px;accent-color:var(--t400);}
+.chart-wrap{background:var(--sur);border:1px solid var(--bdr);border-radius:6px;padding:8px 10px;margin-bottom:6px;}
+.chart-lbl{font-size:9.5px;color:var(--mut);margin-bottom:5px;display:flex;justify-content:space-between;}
+.chart-lbl span{color:var(--hnt);font-size:9px;}
+.pb-bar{display:flex;flex-wrap:wrap;gap:8px;padding:9px 10px;background:var(--g50);border-radius:6px;margin-top:6px;}
+.pb{display:flex;flex-direction:column;}
+.pb-val{font-size:12px;font-weight:500;color:var(--txt);font-family:var(--fm);}
+.pb-val.al{color:var(--c400);}
+.pb-val.ok{color:var(--t400);}
+.pb-val.wn{color:var(--a400);}
+.pb-lbl{font-size:9px;color:var(--hnt);}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(4,52,44,.65);display:flex;align-items:center;justify-content:center;z-index:200;}
+.modal{background:var(--sur);border-radius:13px;padding:26px;width:min(420px,94vw);border:1px solid var(--bdr);}
+.modal h2{font-family:var(--fd);font-size:21px;margin-bottom:5px;}
+.modal p{font-size:12px;color:var(--mut);line-height:1.65;margin-bottom:12px;}
+.modal label{font-size:11px;color:var(--mut);display:block;margin-bottom:3px;}
+.modal input{width:100%;padding:8px 11px;border:1px solid var(--bdr);border-radius:6px;font-family:var(--fm);font-size:12.5px;color:var(--txt);background:var(--bg);margin-bottom:10px;outline:none;}
+.modal input:focus{border-color:var(--t400);}
+.mbtn{width:100%;padding:9px;background:var(--t400);color:#fff;border:none;border-radius:6px;font-family:var(--fb);font-size:13px;font-weight:500;cursor:pointer;transition:background .15s;}
+.mbtn:hover{background:var(--t600);}
+.mnote{font-size:10.5px;color:var(--hnt);margin-top:8px;line-height:1.5;}
+.mnote a{color:var(--t600);}
+
+@media(max-width:900px){.sb{display:none;}}
+@media(max-width:700px){.rpanel{display:none;}}
+</style>
+</head>
+<body>
+
+<!-- MODAL CONFIG -->
+<div class="ov" id="modal">
+  <div class="modal">
+    <h2>Configurar RespirIA</h2>
+    <p>Cole a URL do seu backend no Render para ativar o tutor.</p>
+    <label>URL do backend (Render)</label>
+    <input type="url" id="bk-url" placeholder="https://respir-ia.onrender.com" oninput="validateCfg()"/>
+    <label>Seu nome ou turma</label>
+    <input type="text" id="user-name" placeholder="Ex: Turma 2025.1 ou seu nome"/>
+    <button class="mbtn" id="cfg-btn" onclick="saveCfg()" disabled>Salvar e iniciar →</button>
+    <p class="mnote">Compartilhe o link do frontend com seus alunos. Cada um configura a URL uma única vez.</p>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 17 17" fill="none">
+        <ellipse cx="8.5" cy="6.5" rx="4.5" ry="5" fill="white" opacity=".9"/>
+        <path d="M5.5 10.5 C5.5 13 8.5 15 8.5 15 C8.5 15 11.5 13 11.5 10.5" stroke="white" stroke-width="1.2" fill="none" opacity=".6"/>
+        <circle cx="8.5" cy="6" r="1.5" fill="#04342C" opacity=".5"/>
+      </svg>
+    </div>
+    <span class="logo-name">Respir<em>IA</em></span>
+  </div>
+  <div class="hdr-r">
+    <span class="hdr-badge">TUTOR VMI · FISIOTERAPIA</span>
+    <div class="hdr-st">
+      <div class="sdot off" id="sdot"></div>
+      <span id="slbl">Desconectado</span>
+    </div>
+    <button class="hdr-btn" onclick="showAdminConfig()">⚙</button>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- SIDEBAR ESQUERDA -->
+  <aside class="sb">
+    <div class="sb-s">
+      <div class="sb-l">Modo de Estudo</div>
+      <button class="mb" id="mb-a" onclick="sq('A')">
+        <div class="mk">A</div>
+        <div><div class="mt">Revisão Teórica</div><div class="ms">Conceitos, fisiologia e mecânica</div></div>
+      </button>
+      <button class="mb" id="mb-b" onclick="sq('B')">
+        <div class="mk">B</div>
+        <div><div class="mt">Caso Clínico</div><div class="ms">Simulação com feedback imediato</div></div>
+      </button>
+      <button class="mb" id="mb-c" onclick="sq('C')">
+        <div class="mk">C</div>
+        <div><div class="mt">Diagnóstico Prévio</div><div class="ms">Avalie seu conhecimento atual</div></div>
+      </button>
+    </div>
+    <div class="sb-s">
+      <div class="sb-l">Estatísticas da Sessão</div>
+      <div class="stat-grid">
+        <div class="stat-card ok"><div class="stat-val" id="st-turns">0</div><div class="stat-lbl">Trocas</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-time">0m</div><div class="stat-lbl">Tempo</div></div>
+        <div class="stat-card ok"><div class="stat-val" id="st-hits">0</div><div class="stat-lbl">Acertos</div></div>
+        <div class="stat-card al"><div class="stat-val" id="st-miss">0</div><div class="stat-lbl">Correções</div></div>
+      </div>
+    </div>
+    <div class="sb-s">
+      <div class="sb-l">Desempenho por Tema</div>
+      <div id="topic-list"><div class="no-p">Interaja com o tutor para ver desempenho aqui.</div></div>
+    </div>
+    <div class="sb-s">
+      <div class="sb-l">Parâmetros do Caso</div>
+      <div id="pp"><div class="no-p">Inicie um caso clínico (B) para monitorar parâmetros.</div></div>
+    </div>
+    <div class="pg-w">
+      <div class="sb-l">Engajamento</div>
+      <div class="sb-l" id="pg-lbl" style="font-size:11px;color:var(--mut);text-transform:none;letter-spacing:0;">Aguardando...</div>
+      <div class="pg-bg"><div class="pg-f" id="pgf" style="width:0%"></div></div>
+      <div class="pg-s" id="pg-sub">0 trocas nesta sessão</div>
+    </div>
+  </aside>
+
+  <!-- CHAT CENTRAL -->
+  <div class="chat">
+    <div class="tbar">
+      <span class="tag on" id="tg-mode">Aguardando modo</span>
+      <span class="tag" id="tg-topic">—</span>
+      <span class="ttxt" id="tg-desc">Configure o backend e escolha um modo para começar</span>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="inp-area">
+      <div class="inp-wrap">
+        <textarea id="txt" rows="1" placeholder="Digite sua resposta ou dúvida..." onkeydown="hk(event)" oninput="ag(this)"></textarea>
+        <button class="snd" id="sbtn" onclick="send()" disabled>
+          <svg viewBox="0 0 15 15" fill="none"><path d="M2 7.5L13 1.5L8 13.5L6.5 8.5L2 7.5Z" fill="white"/></svg>
+        </button>
+      </div>
+      <div class="qr">
+        <button class="qb" onclick="sq('O que é ventilação protetora?')">Ventilação protetora</button>
+        <button class="qb" onclick="sq('Explique driving pressure')">Driving pressure</button>
+        <button class="qb" onclick="sq('Como interpretar curvas pressão-tempo e fluxo-tempo?')">Curvas do ventilador</button>
+        <button class="qb" onclick="sq('Critérios para iniciar o desmame ventilatório')">Desmame</button>
+        <button class="qb" onclick="sq('Diferença prática entre Ppico e Pplatô')">Ppico vs Pplatô</button>
+        <button class="qb" onclick="sq('Modos ventilatórios: VCV, PCV e PSV')">Modos ventilatórios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAINEL DIREITO — CURVAS + PARAMS -->
+  <div class="rpanel">
+    <div class="rp-tabs">
+      <div class="rp-tab on" id="tab-curvas" onclick="switchTab('curvas')">Curvas</div>
+      <div class="rp-tab" id="tab-params" onclick="switchTab('params')">Parâmetros</div>
+    </div>
+
+    <!-- ABA CURVAS -->
+    <div class="rp-body" id="tab-body-curvas">
+      <div class="sb-l" style="margin-bottom:6px;">Modo ventilatório</div>
+      <div class="curve-mode-row">
+        <button class="cm-btn on" id="cm-vcv" onclick="setVentMode('VCV')">VCV</button>
+        <button class="cm-btn" id="cm-pcv" onclick="setVentMode('PCV')">PCV</button>
+        <button class="cm-btn" id="cm-psv" onclick="setVentMode('PSV')">PSV</button>
+      </div>
+
+      <div class="sb-l" style="margin-bottom:5px;">Perfil do paciente</div>
+      <div class="preset-row">
+        <button class="pr-btn" onclick="applyPreset('normal')">Normal</button>
+        <button class="pr-btn" onclick="applyPreset('sdra')">SDRA</button>
+        <button class="pr-btn" onclick="applyPreset('dpoc')">DPOC</button>
+        <button class="pr-btn" onclick="applyPreset('asma')">Asma</button>
+      </div>
+
+      <div id="vc-panel"></div>
+
+      <div class="chart-wrap">
+        <div class="chart-lbl">Pressão (cmH₂O) <span>Ppico e Pplatô</span></div>
+        <div style="position:relative;height:90px;"><canvas id="c-pres"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-lbl">Fluxo (L/min) <span>+ insp / − exp</span></div>
+        <div style="position:relative;height:75px;"><canvas id="c-flow"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-lbl">Volume (mL)</div>
+        <div style="position:relative;height:75px;"><canvas id="c-vol"></canvas></div>
+      </div>
+
+      <div class="pb-bar" id="pb-bar"></div>
+
+      <div style="margin-top:10px;padding:8px 10px;background:var(--b50);border-radius:6px;border:1px solid #B5D4F4;">
+        <div style="font-size:10px;color:var(--b600);font-weight:500;margin-bottom:3px;">Perguntar ao tutor sobre estas curvas</div>
+        <button onclick="sq('Analise as curvas atuais do ventilador e me faça uma pergunta sobre o que observo.')" style="font-size:10.5px;padding:4px 10px;background:#fff;border:1px solid var(--b400);border-radius:20px;cursor:pointer;color:var(--b600);font-family:var(--fb);">Discutir com RespirIA ↗</button>
+      </div>
+    </div>
+
+    <!-- ABA PARÂMETROS -->
+    <div class="rp-body" id="tab-body-params" style="display:none;">
+      <div class="sb-l" style="margin-bottom:8px;">Limites de proteção pulmonar</div>
+
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--t50);border-radius:6px;border:1px solid var(--t100);">
+          <span style="font-size:11.5px;color:var(--t800);">VC alvo</span>
+          <span style="font-family:var(--fm);font-size:12px;color:var(--t600);">4–8 mL/kg PP</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--t50);border-radius:6px;border:1px solid var(--t100);">
+          <span style="font-size:11.5px;color:var(--t800);">Pplatô máx.</span>
+          <span style="font-family:var(--fm);font-size:12px;color:var(--t600);">≤ 30 cmH₂O</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--t50);border-radius:6px;border:1px solid var(--t100);">
+          <span style="font-size:11.5px;color:var(--t800);">Driving P. máx.</span>
+          <span style="font-family:var(--fm);font-size:12px;color:var(--t600);">≤ 15 cmH₂O</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--t50);border-radius:6px;border:1px solid var(--t100);">
+          <span style="font-size:11.5px;color:var(--t800);">SpO₂ alvo SDRA</span>
+          <span style="font-family:var(--fm);font-size:12px;color:var(--t600);">92–96%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--t50);border-radius:6px;border:1px solid var(--t100);">
+          <span style="font-size:11.5px;color:var(--t800);">SpO₂ alvo DPOC</span>
+          <span style="font-family:var(--fm);font-size:12px;color:var(--t600);">88–92%</span>
+        </div>
+      </div>
+
+      <div class="sb-l" style="margin-bottom:8px;">Calculadora de peso predito</div>
+      <div style="background:var(--g50);border-radius:6px;padding:10px;">
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <select id="sexo" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--bdr);border-radius:5px;background:var(--sur);" onchange="calcPP()">
+            <option value="m">Masculino</option>
+            <option value="f">Feminino</option>
+          </select>
+          <input type="number" id="altura" placeholder="Altura (cm)" min="140" max="210" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--bdr);border-radius:5px;" oninput="calcPP()"/>
+        </div>
+        <div id="pp-result" style="font-size:12px;color:var(--mut);">Insira altura para calcular.</div>
+      </div>
+
+      <div class="sb-l" style="margin-top:12px;margin-bottom:8px;">Referências</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:11px;color:var(--mut);padding:6px 8px;background:var(--g50);border-radius:5px;line-height:1.5;">ARDSNet — NEJM 2000: VC 6 mL/kg PP em SDRA</div>
+        <div style="font-size:11px;color:var(--mut);padding:6px 8px;background:var(--g50);border-radius:5px;line-height:1.5;">Berlin 2012: classificação SDRA (P/F ≤300, ≤200, ≤100)</div>
+        <div style="font-size:11px;color:var(--mut);padding:6px 8px;background:var(--g50);border-radius:5px;line-height:1.5;">Amato et al. 2015: driving pressure prediz mortalidade</div>
+        <div style="font-size:11px;color:var(--mut);padding:6px 8px;background:var(--g50);border-radius:5px;line-height:1.5;">Tobin 2001: RSBI (f/VC) &lt;105 para desmame</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ════════════════════════════════════
+   SYSTEM PROMPT
+════════════════════════════════════ */
+const SYS = `Você é RespirIA, tutor personalizado e especialista em Ventilação Mecânica Invasiva (VMI) para graduação em Fisioterapia no Brasil. Criado por uma fisioterapeuta intensivista, preceptora e mestranda.
+
+IDENTIDADE: Nome RespirIA. Tom acolhedor, encorajador, clinicamente rigoroso. Português do Brasil técnico mas acessível à graduação.
+
+════ 1. INÍCIO ATIVO ════
+Na PRIMEIRA mensagem: apresente-se em 2 linhas, pergunte o nome do aluno, apresente as 3 opções e AGUARDE a escolha:
+  (A) Revisar um conceito teórico específico
+  (B) Resolver um caso clínico prático
+  (C) Realizar diagnóstico de conhecimento prévio
+Nunca inicie conteúdo antes de receber a escolha.
+
+════ 2. MÉTODO SOCRÁTICO ════
+- Nunca entregue a resposta diretamente na primeira dúvida
+- Responda com questionamento que direcione para: fisiologia respiratória, mecânica pulmonar, ou gráficos/curvas do ventilador
+- Após 2 tentativas sem acerto: dica direcionada
+- Após 3 tentativas: explique completamente com base fisiológica
+
+════ 3. MODO A — REVISÃO TEÓRICA ════
+Pergunte o tema. Explique em camadas: conceito → fisiologia → aplicação clínica → exemplo prático.
+Temas: modos (VCV, PCV, PSV, SIMV), parâmetros (VC, FR, PEEP, FiO2, I:E), mecânica (complacência, resistência), monitorização (Ppico, Pplatô, driving pressure, auto-PEEP), oxigenação, curvas, alarmes, desmame.
+
+════ 4. MODO B — CASO CLÍNICO ════
+Apresente caso com: idade/peso/diagnóstico, parâmetros ventilatórios (modo/VC/FR/PEEP/FiO2/Ppico/Pplatô), gasometria (pH/PaO2/PaCO2/HCO3/SaO2), dados de monitorização.
+Conduza progressivamente: observação → análise → decisão.
+Casos variados: SDRA (leve/moderada/grave), DPOC exacerbado, pós-op cardíaco fast-track, asma grave, IRpA hipoxêmica, TCE com controle de PaCO2, sepse+SDRA.
+
+════ 5. MODO C — DIAGNÓSTICO ════
+5 perguntas progressivas (fácil→difícil). Ao final: resumo com pontos fortes, lacunas e recomendações.
+
+════ 6. SEGURANÇA — SEMPRE ════
+⚠️ VC: 4–8 mL/kg peso predito | Pplatô ≤ 30 cmH2O | Driving pressure ≤ 15 cmH2O
+⚠️ FiO2 mínima | FR: evitar auto-PEEP | Prona em SDRA grave (P/F < 150)
+Se o aluno sugerir parâmetro que viole proteção pulmonar: SINALIZE antes de continuar.
+
+════ 7. MARCADORES DE DESEMPENHO ════
+Em CADA resposta, inclua UMA dessas tags no final:
+[ACERTO] — aluno acertou ou demonstrou compreensão correta
+[CORRECAO:tema] — precisou corrigir (ex: [CORRECAO:PEEP])
+[NEUTRO] — apresentações, perguntas abertas, início de novo tema
+
+════ 8. CURVAS DO VENTILADOR ════
+Quando discutir curvas, mencione sempre: modo ventilatório, formato esperado (pressão-tempo, fluxo-tempo, volume-tempo), o que cada desvio indica clinicamente. O aluno tem acesso ao simulador de curvas no painel direito da tela — incentive-o a manipular os parâmetros e observar as mudanças.
+
+════ 9. FEEDBACK E ENCERRAMENTO ════
+Feedback breve e construtivo após cada resposta (máx 3 linhas).
+SEMPRE encerre com: pergunta de múltipla escolha (2–3 alternativas), desafio clínico ou questão reflexiva.
+
+════ 10. FORMATAÇÃO ════
+🫁 fisiologia | ⚠️ alerta | ✅ acerto | ❌ correção | 💡 dica | ❓ pergunta | 📊 curvas
+Máx 150 palavras (exceto após 3 tentativas sem acerto).`;
+
+/* ════════════════════════════════════
+   APP STATE
+════════════════════════════════════ */
+let backendUrl = localStorage.getItem('respiria_bk') || 'https://respir-ia.onrender.com';
+let userName   = localStorage.getItem('respiria_user') || 'Aluno';
+let hist=[], turns=0, busy=false, caseOn=false;
+let hits=0, misses=0, topicMap={}, currentMode=null;
+let sessionStart=null, timerInterval=null;
+
+window.onload = () => {
+  userName = localStorage.getItem('respiria_user') || '';
+  if(userName && backendUrl){ connect(); startChat(); }
+  else { document.getElementById('modal').style.display='flex'; connect(); }
+  buildVentControls();
+  setTimeout(()=>{ initCharts(); updateCurves(); }, 300);
+  setInterval(updateTimer, 15000);
+};
+
+/* ════════════════════════════════════
+   CONFIG
+════════════════════════════════════ */
+function validateCfg(){
+  document.getElementById('cfg-btn').disabled = document.getElementById('user-name').value.trim().length < 2;
+}
+function saveCfg(){
+  userName = document.getElementById('user-name').value.trim() || 'Aluno';
+  localStorage.setItem('respiria_user', userName);
+  document.getElementById('modal').style.display='none';
+  connect();
+  if(hist.length===0) startChat();
+}
+function connect(){
+  document.getElementById('sdot').className='sdot';
+  document.getElementById('slbl').textContent='Conectado';
+  document.getElementById('sbtn').disabled=false;
+  sessionStart=Date.now();
+}
+
+/* ════════════════════════════════════
+   TABS PAINEL DIREITO
+════════════════════════════════════ */
+function switchTab(t){
+  ['curvas','params'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('on',x===t);
+    document.getElementById('tab-body-'+x).style.display = x===t?'block':'none';
+  });
+}
+
+/* ════════════════════════════════════
+   CHAT
+════════════════════════════════════ */
+function startChat(){
+  addMsg('ai','<b>Olá! Sou o RespirIA</b> — seu tutor de Ventilação Mecânica Invasiva. 🫁\n\nAntes de começarmos, como posso te chamar?\n\nE assim que me responder, me diga como quer estudar hoje:',
+    [{l:'(A) Revisão Teórica',v:'A'},{l:'(B) Caso Clínico',v:'B'},{l:'(C) Diagnóstico Prévio',v:'C'}]);
+  hist.push({role:'assistant',content:'Olá! Sou o RespirIA. Como posso te chamar? Escolha: (A) Revisão Teórica, (B) Caso Clínico, (C) Diagnóstico Prévio.'});
+}
+
+function addMsg(role,txt,choices=[]){
+  const c=document.getElementById('msgs');
+  const w=document.createElement('div'); w.className=`mw ${role==='ai'?'ai':'us'}`;
+  const av=document.createElement('div'); av.className=`av ${role==='ai'?'ai':'us'}`; av.textContent=role==='ai'?'R':'Eu';
+  const b=document.createElement('div'); b.className='bub'; b.innerHTML=fmt(txt);
+  if(choices.length){
+    const row=document.createElement('div'); row.className='ch-row';
+    choices.forEach(ch=>{const btn=document.createElement('button');btn.className='ch';btn.textContent=ch.l;btn.onclick=()=>sq(ch.v||ch.l);row.appendChild(btn);});
+    b.appendChild(row);
+  }
+  w.appendChild(av); w.appendChild(b); c.appendChild(w); c.scrollTop=c.scrollHeight;
+}
+function addThinking(){
+  const c=document.getElementById('msgs');
+  const w=document.createElement('div'); w.className='mw ai'; w.id='tk';
+  const av=document.createElement('div'); av.className='av ai'; av.textContent='R';
+  const b=document.createElement('div'); b.className='bub';
+  b.innerHTML='<div class="dots"><span></span><span></span><span></span></div>';
+  w.appendChild(av); w.appendChild(b); c.appendChild(w); c.scrollTop=c.scrollHeight;
+}
+function rmThinking(){const e=document.getElementById('tk');if(e)e.remove();}
+
+function fmt(t){
+  return t
+    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+    .replace(/\[ACERTO\]|\[CORRECAO:[^\]]+\]|\[NEUTRO\]/g,'')
+    .replace(/⚠️([^\n]+)/g,'<div class="callout wn">⚠️$1</div>')
+    .replace(/❌([^\n]+)/g,'<div class="callout al">❌$1</div>')
+    .replace(/\n/g,'<br>');
+}
+
+function sq(v){if(!busy&&backendUrl){document.getElementById('txt').value='';doSend(v);}}
+async function send(){
+  if(busy||!backendUrl)return;
+  const el=document.getElementById('txt'); const t=el.value.trim(); if(!t)return;
+  el.value=''; ag(el); doSend(t);
+}
+async function doSend(text){
+  busy=true; document.getElementById('sbtn').disabled=true;
+  addMsg('user',text); hist.push({role:'user',content:text});
+  detectMode(text); turns++; updProg(); addThinking();
+  try{
+    const res=await fetch(backendUrl+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYS,messages:hist})});
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||`HTTP ${res.status}`);}
+    const data=await res.json();
+    const reply=data.content?.map(b=>b.text||'').join('')||'Sem resposta.';
+    rmThinking(); parsePerformance(reply); addMsg('ai',reply);
+    hist.push({role:'assistant',content:reply}); parseParams(reply);
+  }catch(e){
+    rmThinking();
+    addMsg('ai',`⚠️ Erro ao conectar com o backend: <b>${e.message}</b>\n\nVerifique se o Render está ativo (pode demorar ~30s para acordar no plano gratuito) e se a URL está correta em ⚙ Config.`);
+  }
+  busy=false; document.getElementById('sbtn').disabled=false; document.getElementById('txt').focus();
+}
+
+/* ════════════════════════════════════
+   MODO / DESEMPENHO / LOG
+════════════════════════════════════ */
+function detectMode(t){
+  const u=t.toUpperCase().trim().charAt(0);
+  const map={A:{l:'Revisão Teórica',tp:'Conceitos e fisiologia'},B:{l:'Caso Clínico',tp:'Simulação prática'},C:{l:'Diagnóstico Prévio',tp:'Avaliação de conhecimento'}};
+  if(map[u]){
+    currentMode=u;
+    ['a','b','c'].forEach(x=>document.getElementById('mb-'+x).classList.remove('on'));
+    document.getElementById('mb-'+u.toLowerCase()).classList.add('on');
+    document.getElementById('tg-mode').textContent=map[u].l;
+    document.getElementById('tg-topic').textContent=map[u].tp; document.getElementById('tg-topic').className='tag on';
+    document.getElementById('tg-desc').textContent=map[u].tp;
+    if(u==='B') caseOn=true;
+  }
+}
+function parsePerformance(reply){
+  const acerto=/\[ACERTO\]/.test(reply);
+  const corr=reply.match(/\[CORRECAO:([^\]]+)\]/);
+  if(acerto){hits++;document.getElementById('st-hits').textContent=hits;}
+  if(corr){misses++;document.getElementById('st-miss').textContent=misses;
+    const tema=corr[1].replace(/_/g,' ');
+    if(!topicMap[tema])topicMap[tema]={hits:0,misses:0};
+    topicMap[tema].misses++;updateTopicList();}
+  if(turns%5===0||(acerto||corr))sendLog();
+}
+function updateTopicList(){
+  const el=document.getElementById('topic-list');
+  const items=Object.entries(topicMap);
+  if(!items.length){el.innerHTML='<div class="no-p">Interaja com o tutor para ver desempenho.</div>';return;}
+  el.innerHTML=items.map(([t,s])=>{const total=s.hits+s.misses;const pct=total?Math.round(s.hits/total*100):0;const cls=pct>=70?'ok':pct>=40?'wn':'al';
+    return `<div class="topic-item"><span class="topic-name">${t}</span><span class="topic-score ${cls}">${pct}% (${total})</span></div>`;}).join('');
+}
+function sendLog(){
+  if(!backendUrl)return;
+  const elapsed=sessionStart?Math.round((Date.now()-sessionStart)/60000):0;
+  fetch(backendUrl+'/api/log',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({timestamp:new Date().toISOString(),usuario:userName,modo:currentMode||'—',trocas:turns,acertos:hits,correcoes:misses,tempo_min:elapsed,temas:JSON.stringify(topicMap)})
+  }).catch(()=>{});
+}
+window.addEventListener('beforeunload',()=>{if(turns>0)sendLog();});
+
+function parseParams(reply){
+  if(!caseOn)return;
+  const ps=[
+    {k:'VC',r:/VC[:\s]+(\d+)\s*mL/i,u:'mL',fn:v=>v>560||v<280},
+    {k:'FR',r:/FR[:\s]+(\d+)\s*irpm/i,u:'irpm',fn:v=>v>30},
+    {k:'FiO₂',r:/FiO[₂2][:\s]+(\d+)\s*%/i,u:'%',fn:v=>v>60},
+    {k:'PEEP',r:/PEEP[:\s]+(\d+)\s*cmH/i,u:'cmH₂O',fn:v=>v<5||v>18},
+    {k:'Pplatô',r:/Pplat[ôo][:\s]+(\d+)\s*cmH/i,u:'cmH₂O',fn:v=>v>30},
+    {k:'Driving P.',r:/driving[^\d]+(\d+)\s*cmH/i,u:'cmH₂O',fn:v=>v>15},
+    {k:'SpO₂',r:/SpO[₂2][:\s]+(\d+)\s*%/i,u:'%',fn:v=>v<92},
+    {k:'P/F',r:/Pa[Oo]2\/Fi[Oo]2[:\s]+(\d+)/i,u:'',fn:v=>v<200},
+  ];
+  const found=[];
+  ps.forEach(p=>{const m=reply.match(p.r);if(m){const v=parseInt(m[1]);found.push({k:p.k,v:`${v} ${p.u}`.trim(),cl:p.fn(v)?'al':'ok'});}});
+  if(found.length)document.getElementById('pp').innerHTML=found.map(f=>`<div class="pr"><span class="pn">${f.k}</span><span class="pv ${f.cl}">${f.v}</span></div>`).join('');
+}
+
+function updateTimer(){
+  if(!sessionStart)return;
+  document.getElementById('st-time').textContent=Math.round((Date.now()-sessionStart)/60000)+'m';
+}
+function updProg(){
+  document.getElementById('st-turns').textContent=turns;
+  document.getElementById('pgf').style.width=Math.min(turns*8,100)+'%';
+  const ls=['Iniciando...','Bom começo!','Engajado','Aprendendo bem!','Ótima sessão!','Sessão avançada!'];
+  document.getElementById('pg-lbl').textContent=ls[Math.min(Math.floor(turns/2),ls.length-1)];
+  document.getElementById('pg-sub').textContent=`${turns} ${turns===1?'troca':'trocas'} nesta sessão`;
+}
+
+/* ════════════════════════════════════
+   CALCULADORA PESO PREDITO
+════════════════════════════════════ */
+function calcPP(){
+  const h=parseFloat(document.getElementById('altura').value);
+  const s=document.getElementById('sexo').value;
+  if(!h||h<140||h>210){document.getElementById('pp-result').textContent='Insira altura válida (140–210 cm).';return;}
+  const pp=s==='m'?50+0.91*(h-152.4):45.5+0.91*(h-152.4);
+  const ppR=Math.round(pp*10)/10;
+  const vcMin=Math.round(ppR*4);
+  const vcMax=Math.round(ppR*8);
+  document.getElementById('pp-result').innerHTML=`<b>Peso predito: ${ppR} kg</b><br>VC alvo: ${vcMin}–${vcMax} mL`;
+}
+
+/* ════════════════════════════════════
+   SIMULADOR DE CURVAS
+════════════════════════════════════ */
+let ventMode='VCV';
+const ventParams={
+  VCV:[
+    {id:'vc',   label:'Volume corrente (mL)', min:200,max:800,step:10, val:500},
+    {id:'fr',   label:'FR (irpm)',             min:8,  max:35, step:1,  val:14},
+    {id:'peep', label:'PEEP (cmH₂O)',          min:0,  max:20, step:1,  val:5},
+    {id:'flow', label:'Fluxo pico (L/min)',    min:20, max:80, step:5,  val:60},
+    {id:'cst',  label:'Complacência (mL/cmH₂O)',min:10,max:80,step:5,  val:50},
+    {id:'rva',  label:'Resistência (cmH₂O/L/s)',min:2, max:30,step:1,  val:8},
+  ],
+  PCV:[
+    {id:'pip',  label:'ΔP acima PEEP (cmH₂O)',min:5, max:40,step:1,   val:20},
+    {id:'fr',   label:'FR (irpm)',             min:8, max:35, step:1,  val:14},
+    {id:'peep', label:'PEEP (cmH₂O)',          min:0, max:20, step:1,  val:5},
+    {id:'ti',   label:'T. inspiratório (s)',   min:0.5,max:2.0,step:0.1,val:1.0},
+    {id:'cst',  label:'Complacência (mL/cmH₂O)',min:10,max:80,step:5,  val:50},
+    {id:'rva',  label:'Resistência (cmH₂O/L/s)',min:2,max:30, step:1,  val:8},
+  ],
+  PSV:[
+    {id:'ps',   label:'Pressão suporte (cmH₂O)',min:5,max:30,step:1,   val:12},
+    {id:'peep', label:'PEEP (cmH₂O)',            min:0,max:15,step:1,  val:5},
+    {id:'pmus', label:'Esforço Pmus (cmH₂O)',    min:2,max:20,step:1,  val:8},
+    {id:'cst',  label:'Complacência (mL/cmH₂O)', min:10,max:80,step:5, val:50},
+    {id:'rva',  label:'Resistência (cmH₂O/L/s)', min:2,max:30, step:1, val:8},
+  ]
+};
+const presets={
+  normal:{cst:50,rva:8, vc:500,pip:18,ps:12,peep:5, fr:14,pmus:8,flow:60,ti:1.0},
+  sdra:  {cst:25,rva:10,vc:420,pip:18,ps:10,peep:10,fr:18,pmus:6,flow:60,ti:1.0},
+  dpoc:  {cst:60,rva:22,vc:500,pip:22,ps:14,peep:5, fr:22,pmus:10,flow:50,ti:0.8},
+  asma:  {cst:45,rva:28,vc:480,pip:25,ps:15,peep:3, fr:16,pmus:12,flow:70,ti:0.9},
+};
+
+function gv(id){const e=document.getElementById('vp-'+id);return e?parseFloat(e.value):0;}
+
+function buildVentControls(){
+  const panel=document.getElementById('vc-panel'); panel.innerHTML='';
+  ventParams[ventMode].forEach(p=>{
+    const d=document.createElement('div'); d.className='cctrl';
+    const displayVal = p.step<1 ? parseFloat(p.val).toFixed(1) : p.val;
+    d.innerHTML=`<div class="cctrl-lbl"><span>${p.label}</span><span class="cctrl-val" id="vv-${p.id}">${displayVal}</span></div>
+      <input type="range" id="vp-${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}"
+        oninput="document.getElementById('vv-${p.id}').textContent=parseFloat(this.value).toFixed(this.step<1?1:0);updateCurves()">`;
+    panel.appendChild(d);
+  });
+}
+
+function setVentMode(m){
+  ventMode=m;
+  ['VCV','PCV','PSV'].forEach(x=>document.getElementById('cm-'+x.toLowerCase()).classList.toggle('on',x===m));
+  buildVentControls(); updateCurves();
+}
+
+function applyPreset(name){
+  const pr=presets[name];
+  ventParams[ventMode].forEach(p=>{
+    if(pr[p.id]!==undefined){
+      const el=document.getElementById('vp-'+p.id);
+      if(el){el.value=pr[p.id];const dp=p.step<1?parseFloat(pr[p.id]).toFixed(1):pr[p.id];document.getElementById('vv-'+p.id).textContent=dp;}
+    }
+  });
+  updateCurves();
+}
+
+let charts={};
+function initCharts(){
+  const mk=(id,color,yMin,yMax)=>{
+    const ctx=document.getElementById(id);
+    if(!ctx)return null;
+    return new Chart(ctx.getContext('2d'),{
+      type:'line',
+      data:{labels:[],datasets:[{data:[],borderColor:color,borderWidth:1.5,pointRadius:0,fill:false,tension:0}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{display:false},y:{min:yMin,max:yMax,
+          grid:{color:'rgba(128,128,128,0.08)'},
+          ticks:{font:{size:9},color:'#888780',maxTicksLimit:4}}}}
+    });
+  };
+  charts.pres=mk('c-pres','#1D9E75',-5,50);
+  charts.flow=mk('c-flow','#378ADD',-35,80);
+  charts.vol =mk('c-vol', '#854F0B',-30,800);
+}
+
+function updateCurves(){
+  if(!charts.pres)return;
+  const N=180, peep=gv('peep')||5, cst=gv('cst')||50, rva=gv('rva')||8;
+  const fr=gv('fr')||14;
+  const pres=[],flow=[],vol=[];
+  let ti,ppeak,pplat,vcTidal;
+  const ttot=60/fr;
+
+  if(ventMode==='VCV'){
+    const vc=gv('vc')||500, flw=gv('flow')||60;
+    ti=(vc/1000)/(flw/60); ppeak=peep+(vc/1000)/cst*1000+rva*(flw/60)*1000/1000; pplat=peep+(vc/1000)/cst*1000; vcTidal=vc;
+  }else if(ventMode==='PCV'){
+    const pip=gv('pip')||20; ti=gv('ti')||1.0;
+    const tau=(cst/1000)*rva; vcTidal=pip*cst*(1-Math.exp(-ti/tau)); ppeak=peep+pip; pplat=ppeak;
+  }else{
+    const ps=gv('ps')||12, pmus=gv('pmus')||8;
+    const tau=(cst/1000)*rva; vcTidal=(ps+pmus)*cst*(1-Math.exp(-0.8/tau)); ti=0.8; ppeak=peep+ps; pplat=ppeak*0.88;
+  }
+
+  const te=Math.max(0.3,ttot-ti);
+  for(let i=0;i<N;i++){
+    const t=(i/N)*(3*ttot), tc=t%ttot;
+    let p,f,v;
+    if(ventMode==='VCV'){
+      const flw=gv('flow')||60;
+      if(tc<ti){const frac=tc/ti;p=peep+(ppeak-peep)*frac;f=flw;v=(flw/60)*tc*1000;}
+      else{const et=tc-ti,tau=(cst/1000)*rva;p=peep+(pplat-peep)*Math.exp(-et/(tau*1.5));f=-(vcTidal/1000)/tau*Math.exp(-et/tau)*60;v=Math.max(0,vcTidal*Math.exp(-et/tau));}
+    }else if(ventMode==='PCV'){
+      const pip=gv('pip')||20,tau=(cst/1000)*rva;
+      if(tc<ti){p=peep+pip*(1-Math.exp(-tc/(tau*0.15)));f=(pip/rva)*Math.exp(-tc/tau)*60;v=vcTidal*(1-Math.exp(-tc/tau));}
+      else{const et=tc-ti;p=peep+pip*Math.exp(-et/(tau*2));f=-(vcTidal/1000)/tau*Math.exp(-et/tau)*60;v=Math.max(0,vcTidal*Math.exp(-et/tau));}
+    }else{
+      const ps=gv('ps')||12,tau=(cst/1000)*rva,pmus=gv('pmus')||8;
+      if(tc<ti){const r=Math.min(tc/0.1,1);p=peep+ps*r;f=((ps+pmus)/rva)*Math.exp(-tc/tau)*60*r;v=vcTidal*(1-Math.exp(-tc/tau))*r;}
+      else{const et=tc-ti;p=peep+ps*0.08*Math.exp(-et/0.3);f=-(vcTidal/1000)/tau*Math.exp(-et/tau)*60;v=Math.max(0,vcTidal*Math.exp(-et/tau));}
+    }
+    pres.push(Math.round(p*10)/10);
+    flow.push(Math.round(f*10)/10);
+    vol.push(Math.round(Math.max(0,v)*10)/10);
+  }
+
+  const lbls=Array.from({length:N},(_,i)=>i);
+  const ppR=Math.round(ppeak), ppltR=Math.round(pplat), dp=Math.round(ppltR-peep), vcR=Math.round(vcTidal);
+  charts.pres.options.scales.y.max=Math.max(50,ppR+8);
+  charts.flow.options.scales.y.max=Math.max(80,(gv('flow')||60)+10);
+  charts.vol.options.scales.y.max=Math.max(800,vcR+100);
+  [['pres',pres],['flow',flow],['vol',vol]].forEach(([k,d])=>{
+    charts[k].data.labels=lbls; charts[k].data.datasets[0].data=d; charts[k].update('none');
+  });
+
+  const dpCl=dp>15?'al':dp>12?'wn':'ok';
+  const ppCl=ppltR>30?'al':ppltR>28?'wn':'ok';
+  const vcKg=Math.round(vcR/70*10)/10;
+  const vcCl=(vcKg<4||vcKg>8)?'al':'ok';
+  const ieCl=Math.round(te/ti*10)/10;
+  document.getElementById('pb-bar').innerHTML=`
+    <div class="pb"><div class="pb-val ${ppCl}">${ppR}</div><div class="pb-lbl">Ppico</div></div>
+    <div class="pb"><div class="pb-val ${ppCl}">${ppltR}</div><div class="pb-lbl">Pplatô</div></div>
+    <div class="pb"><div class="pb-val ${dpCl}">${dp}</div><div class="pb-lbl">Driving P.</div></div>
+    <div class="pb"><div class="pb-val">${Math.round(peep)}</div><div class="pb-lbl">PEEP</div></div>
+    <div class="pb"><div class="pb-val ${vcCl}">${vcR}</div><div class="pb-lbl">VC (mL)</div></div>
+    <div class="pb"><div class="pb-val ${vcCl}">${vcKg}</div><div class="pb-lbl">mL/kg</div></div>
+    <div class="pb"><div class="pb-val">${ieCl}:1</div><div class="pb-lbl">I:E</div></div>`;
+}
+
+
+function showAdminConfig(){
+  const el = document.getElementById('admin-bk-url');
+  if(el) el.value = backendUrl;
+  document.getElementById('admin-modal').style.display='flex';
+}
+function saveAdminCfg(){
+  const v = document.getElementById('admin-bk-url').value.trim().replace(/\/$/,'');
+  if(v.startsWith('http')){ backendUrl=v; localStorage.setItem('respiria_bk',v); }
+  document.getElementById('admin-modal').style.display='none';
+}
+function hk(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function ag(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
+</script>
+
+<!-- MODAL ADMIN (só professora) -->
+<div class="ov" id="admin-modal" style="display:none;">
+  <div class="modal">
+    <h2>Configurações (Admin)</h2>
+    <p>Altere a URL do backend se necessário. Esta opção é apenas para a professora.</p>
+    <label>URL do backend (Render)</label>
+    <input type="url" id="admin-bk-url" placeholder="https://respir-ia.onrender.com" style="margin-bottom:10px;"/>
+    <button class="mbtn" onclick="saveAdminCfg()">Salvar</button>
+    <p class="mnote" style="margin-top:8px;cursor:pointer;color:var(--mut);" onclick="document.getElementById('admin-modal').style.display='none'">Fechar</p>
+  </div>
+</div>
+</body>
+</html>
