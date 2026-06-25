@@ -1,3 +1,4 @@
 chromadb==0.4.22
 pypdf==4.1.0
 sentence-transformers==2.7.0
+numpy==1.26.4
