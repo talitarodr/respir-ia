@@ -1,150 +1,143 @@
 """
-RespirIA Backend com RAG
-========================
-Dependências (requirements.txt):
+RespirIA Backend com RAG leve
+==============================
+Usa TF-IDF simples para busca nos PDFs — sem GPU, sem modelos pesados.
+Funciona no plano gratuito do Render (512MB RAM).
+
+requirements.txt:
     chromadb==0.4.22
     pypdf==4.1.0
-    sentence-transformers==2.7.0
-
-Variáveis de ambiente no Render:
-    ANTHROPIC_API_KEY   — chave da API Anthropic
-    GOOGLE_SHEETS_URL   — URL do Apps Script
-    PORT                — definido automaticamente pelo Render
 """
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import urllib.request, urllib.error, json, os, re
+import urllib.request, urllib.error, json, os, re, math
+from collections import defaultdict
 
-API_KEY     = os.environ.get("ANTHROPIC_API_KEY", "")
-SHEETS_URL  = os.environ.get("GOOGLE_SHEETS_URL", "")
-PORT        = int(os.environ.get("PORT", 8000))
+API_KEY    = os.environ.get("ANTHROPIC_API_KEY", "")
+SHEETS_URL = os.environ.get("GOOGLE_SHEETS_URL", "")
+PORT       = int(os.environ.get("PORT", 8000))
 
-# ── RAG: inicializa base vetorial na primeira requisição ───────────
-_rag_ready = False
-_collection = None
+# ── Base de conhecimento (carregada uma vez na inicialização) ──────
+_chunks  = []   # lista de {"texto": ..., "fonte": ...}
+_idf     = {}   # IDF por termo
+_tf_vecs = []   # TF por chunk
+_rag_ok  = False
 
 def init_rag():
-    global _rag_ready, _collection
-    if _rag_ready:
-        return
+    global _chunks, _idf, _tf_vecs, _rag_ok
     try:
-        import chromadb
-        from sentence_transformers import SentenceTransformer
         from pypdf import PdfReader
-
-        print("RAG: inicializando base vetorial...", flush=True)
-
-        # Modelo leve de embeddings (roda na CPU sem GPU)
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-
-        client = chromadb.Client()
-        _collection = client.get_or_create_collection("respiria_refs")
-
-        # PDFs na mesma pasta do server.py
         pdf_dir = os.path.dirname(os.path.abspath(__file__))
         pdfs = [f for f in os.listdir(pdf_dir) if f.endswith(".pdf")]
-
         if not pdfs:
-            print("RAG: nenhum PDF encontrado — funcionando sem RAG", flush=True)
-            _rag_ready = True
+            print("RAG: nenhum PDF encontrado", flush=True)
+            _rag_ok = True
             return
 
-        docs, ids, metas = [], [], []
         for fname in pdfs:
-            path = os.path.join(pdf_dir, fname)
             try:
-                reader = PdfReader(path)
+                reader = PdfReader(os.path.join(pdf_dir, fname))
                 texto = " ".join(p.extract_text() or "" for p in reader.pages)
-                # Divide em chunks de ~600 caracteres com overlap
-                chunks = _chunkar(texto, tamanho=600, overlap=80)
-                for i, chunk in enumerate(chunks):
-                    chunk = chunk.strip()
-                    if len(chunk) < 80:
-                        continue
-                    docs.append(chunk)
-                    ids.append(f"{fname}_{i}")
-                    metas.append({"fonte": fname})
-                print(f"RAG: indexado {fname} ({len(chunks)} chunks)", flush=True)
+                for chunk in _chunkar(texto):
+                    if len(chunk.strip()) > 80:
+                        _chunks.append({"texto": chunk.strip(), "fonte": fname})
+                print(f"RAG: {fname} indexado", flush=True)
             except Exception as e:
-                print(f"RAG: erro ao processar {fname}: {e}", flush=True)
+                print(f"RAG: erro em {fname}: {e}", flush=True)
 
-        if docs:
-            embeddings = model.encode(docs).tolist()
-            # Insere em lotes para evitar timeout
-            batch = 100
-            for i in range(0, len(docs), batch):
-                _collection.add(
-                    documents=docs[i:i+batch],
-                    embeddings=embeddings[i:i+batch],
-                    ids=ids[i:i+batch],
-                    metadatas=metas[i:i+batch],
-                )
-            print(f"RAG: {len(docs)} chunks indexados com sucesso", flush=True)
+        # Calcula TF-IDF
+        N = len(_chunks)
+        df = defaultdict(int)
+        tfs = []
+        for c in _chunks:
+            termos = _tokenizar(c["texto"])
+            tf = defaultdict(float)
+            for t in termos:
+                tf[t] += 1
+            total = len(termos) or 1
+            for t in tf:
+                tf[t] /= total
+                df[t] += 1
+            tfs.append(dict(tf))
 
-        _rag_ready = True
+        for t, n in df.items():
+            _idf[t] = math.log((N + 1) / (n + 1)) + 1
 
-    except ImportError as e:
-        print(f"RAG: dependência não encontrada ({e}) — funcionando sem RAG", flush=True)
-        _rag_ready = True
+        for tf in tfs:
+            vec = {t: v * _idf.get(t, 1) for t, v in tf.items()}
+            _tf_vecs.append(vec)
+
+        print(f"RAG: {len(_chunks)} chunks prontos", flush=True)
+        _rag_ok = True
+
     except Exception as e:
-        print(f"RAG: erro na inicialização ({e}) — funcionando sem RAG", flush=True)
-        _rag_ready = True
+        print(f"RAG: erro ({e})", flush=True)
+        _rag_ok = True
 
 
-def _chunkar(texto, tamanho=600, overlap=80):
-    """Divide texto em chunks com overlap."""
+def _chunkar(texto, tam=500, overlap=60):
     palavras = texto.split()
     chunks, i = [], 0
     while i < len(palavras):
-        chunk = " ".join(palavras[i:i+tamanho])
-        chunks.append(chunk)
-        i += tamanho - overlap
+        chunks.append(" ".join(palavras[i:i+tam]))
+        i += tam - overlap
     return chunks
 
 
+def _tokenizar(texto):
+    return re.findall(r'\b[a-záéíóúãõâêîôûàç]{3,}\b', texto.lower())
+
+
+def _similaridade(vec_q, vec_d):
+    comum = set(vec_q) & set(vec_d)
+    if not comum:
+        return 0.0
+    dot = sum(vec_q[t] * vec_d[t] for t in comum)
+    norm_q = math.sqrt(sum(v**2 for v in vec_q.values())) or 1
+    norm_d = math.sqrt(sum(v**2 for v in vec_d.values())) or 1
+    return dot / (norm_q * norm_d)
+
+
 def buscar_contexto(pergunta, n=4):
-    """Busca os n chunks mais relevantes para a pergunta."""
-    if not _collection:
+    if not _chunks:
         return ""
-    try:
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        embedding = model.encode([pergunta]).tolist()
-        resultados = _collection.query(
-            query_embeddings=embedding,
-            n_results=n,
-            include=["documents", "metadatas"]
-        )
-        trechos = []
-        for doc, meta in zip(resultados["documents"][0], resultados["metadatas"][0]):
-            fonte = meta.get("fonte", "referência")
-            # Remove nome do arquivo .pdf para ficar mais legível
-            fonte_limpa = re.sub(r'_|\.pdf', ' ', fonte).strip()
-            trechos.append(f"[{fonte_limpa}]\n{doc.strip()}")
-        return "\n\n---\n\n".join(trechos)
-    except Exception as e:
-        print(f"RAG: erro na busca ({e})", flush=True)
+    termos_q = _tokenizar(pergunta)
+    if not termos_q:
         return ""
+    vec_q = {}
+    for t in termos_q:
+        vec_q[t] = vec_q.get(t, 0) + 1
+    total = len(termos_q)
+    vec_q = {t: (v/total) * _idf.get(t, 1) for t, v in vec_q.items()}
+
+    scores = [(_similaridade(vec_q, v), i) for i, v in enumerate(_tf_vecs)]
+    scores.sort(reverse=True)
+
+    trechos = []
+    for score, idx in scores[:n]:
+        if score < 0.01:
+            break
+        fonte = re.sub(r'_|\.pdf', ' ', _chunks[idx]["fonte"]).strip()
+        trechos.append(f"[{fonte}]\n{_chunks[idx]['texto']}")
+    return "\n\n---\n\n".join(trechos)
 
 
 def injetar_contexto(payload, contexto):
-    """Injeta o contexto RAG no system prompt."""
     if not contexto:
         return payload
     payload = dict(payload)
-    system_original = payload.get("system", "")
     payload["system"] = (
-        system_original
-        + "\n\n════ CONTEXTO DAS REFERÊNCIAS BIBLIOGRÁFICAS ════\n"
+        payload.get("system", "")
+        + "\n\n════ CONTEXTO DAS REFERÊNCIAS ════\n"
         + "Use os trechos abaixo como base para sua resposta. "
-        + "Cite a fonte entre parênteses quando usar o conteúdo.\n\n"
+        + "Cite a fonte entre parênteses quando pertinente.\n\n"
         + contexto
         + "\n════ FIM DO CONTEXTO ════"
     )
     return payload
 
 
-# ── Handler HTTP ───────────────────────────────────────────────────
+# ── Handler ────────────────────────────────────────────────────────
 class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *a): pass
@@ -155,113 +148,73 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self._cors()
-        self.end_headers()
+        self.send_response(200); self._cors(); self.end_headers()
 
     def do_GET(self):
-        self.send_response(200)
-        self._cors()
-        self.send_header("Content-Type", "text/plain")
-        self.end_headers()
-        status = "RespirIA backend ativo! RAG: " + ("pronto" if _rag_ready else "inicializando")
-        self.wfile.write(status.encode())
+        self.send_response(200); self._cors()
+        self.send_header("Content-Type", "text/plain"); self.end_headers()
+        self.wfile.write(f"RespirIA ativo. RAG: {'pronto' if _rag_ok else 'iniciando'} ({len(_chunks)} chunks)".encode())
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body   = self.rfile.read(length)
 
-        # ── /api/log ──────────────────────────────────────────────
         if self.path == "/api/log":
             try:
                 self._save_to_sheets(json.loads(body))
-                self.send_response(200)
-                self._cors()
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
+                self.send_response(200); self._cors()
+                self.send_header("Content-Type", "application/json"); self.end_headers()
                 self.wfile.write(b'{"ok":true}')
             except Exception as e:
-                self.send_response(500)
-                self._cors()
-                self.end_headers()
+                self.send_response(500); self._cors(); self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
             return
 
-        # ── /api/chat ─────────────────────────────────────────────
         if self.path != "/api/chat":
-            self.send_response(404)
-            self._cors()
-            self.end_headers()
+            self.send_response(404); self._cors(); self.end_headers()
             return
 
         try:
             payload = json.loads(body)
-
-            # Extrai última mensagem do aluno para busca RAG
-            mensagens = payload.get("messages", [])
-            ultima_msg = ""
-            for m in reversed(mensagens):
-                if m.get("role") == "user":
-                    ultima_msg = m.get("content", "")
-                    break
-
-            # Busca contexto relevante nas referências
-            if ultima_msg and _rag_ready:
-                contexto = buscar_contexto(ultima_msg)
-                if contexto:
-                    payload = injetar_contexto(payload, contexto)
-
-            data_out = json.dumps(payload).encode()
-
-        except Exception as e:
-            data_out = body  # usa payload original se der erro
+            msgs = payload.get("messages", [])
+            ultima = next((m["content"] for m in reversed(msgs) if m.get("role") == "user"), "")
+            if ultima and _rag_ok:
+                ctx = buscar_contexto(ultima)
+                if ctx:
+                    payload = injetar_contexto(payload, ctx)
+            body = json.dumps(payload).encode()
+        except Exception:
+            pass
 
         req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=data_out,
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": API_KEY,
-                "anthropic-version": "2023-06-01",
-            },
+            "https://api.anthropic.com/v1/messages", data=body,
+            headers={"Content-Type": "application/json",
+                     "x-api-key": API_KEY,
+                     "anthropic-version": "2023-06-01"},
             method="POST",
         )
-
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 data = r.read()
-            self.send_response(200)
-            self._cors()
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
+            self.send_response(200); self._cors()
+            self.send_header("Content-Type", "application/json"); self.end_headers()
             self.wfile.write(data)
-
         except urllib.error.HTTPError as e:
             err = e.read()
-            self.send_response(e.code)
-            self._cors()
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
+            self.send_response(e.code); self._cors()
+            self.send_header("Content-Type", "application/json"); self.end_headers()
             self.wfile.write(err)
-
         except Exception as e:
-            msg = json.dumps({"error": {"message": str(e)}}).encode()
-            self.send_response(500)
-            self._cors()
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(msg)
+            self.send_response(500); self._cors()
+            self.send_header("Content-Type", "application/json"); self.end_headers()
+            self.wfile.write(json.dumps({"error": {"message": str(e)}}).encode())
 
     def _save_to_sheets(self, payload):
-        if not SHEETS_URL:
-            return
-        req = urllib.request.Request(
-            SHEETS_URL,
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
+        if not SHEETS_URL: return
         try:
+            req = urllib.request.Request(SHEETS_URL,
+                data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"}, method="POST")
             with urllib.request.urlopen(req, timeout=10) as r:
                 print(f"Sheets OK: {r.status}", flush=True)
         except Exception as e:
@@ -269,8 +222,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"RespirIA backend rodando na porta {PORT}", flush=True)
-    # Inicializa RAG em background para não atrasar o start
+    print(f"RespirIA backend na porta {PORT}", flush=True)
     import threading
     threading.Thread(target=init_rag, daemon=True).start()
     HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
